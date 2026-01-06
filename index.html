@@ -31,7 +31,6 @@ body.dark .glass{background-color:rgba(255,255,255,.05);}
 body.light{background:linear-gradient(180deg,#fff,#ccc);color:#111}
 body.light .glass{background-color:rgba(255,255,255,.3);}
 @keyframes bgShift{0%{background-position:0% 50%}50%{background-position:100% 50%}100%{background-position:0% 50%}}
-@media(max-width:480px){.title{font-size:1.4rem}.cell{font-size:2rem}}
 </style>
 </head>
 <body class='purple'>
@@ -53,7 +52,7 @@ body.light .glass{background-color:rgba(255,255,255,.3);}
 </div>
 <script>
 const boardEl=document.getElementById('board'),msg=document.getElementById('message'),scoreEl=document.getElementById('score'),winLine=document.getElementById('win-line');
-let cells=[],board,player='x',mode='single',aiLevel='easy',scores=JSON.parse(localStorage.getItem('xoScores')||'{"x":0,"o":0}');
+let cells=[],board,player='x',mode='single',aiLevel='easy',tourney=false,scores=JSON.parse(localStorage.getItem('xoScores')||'{"x":0,"o":0}');
 const wins=[[0,1,2],[3,4,5],[6,7,8],[0,3,6],[1,4,7],[2,5,8],[0,4,8],[2,4,6]];
 
 function init(){
@@ -67,7 +66,7 @@ function init(){
     }
     cells=[...document.querySelectorAll('.cell')];
     updateScore();
-    msg.textContent='Tap to play!';
+    msg.textContent=mode==='single'?'Your turn!':`Player ${player.toUpperCase()}'s turn`;
 }
 
 function updateScore(){scoreEl.textContent=`X:${scores.x} O:${scores.o}`}
@@ -75,14 +74,16 @@ function saveScore(){localStorage.setItem('xoScores',JSON.stringify(scores))}
 
 function move(i){
     if(board[i]||checkWinner(board))return;
-    executeMove(i,'x');
+    executeMove(i,player);
     const win=checkWinner(board);
     if(win)return endGame(win);
+
     if(mode==='single'){
         player='o';
         setTimeout(aiMove,400);
     }else{
         player=player==='x'?'o':'x';
+        msg.textContent=`Player ${player.toUpperCase()}'s turn`;
     }
 }
 
@@ -107,6 +108,7 @@ function aiMove(){
         const win=checkWinner(board);
         if(win)return endGame(win);
         player='x';
+        msg.textContent='Your turn!';
     }
 }
 
@@ -160,9 +162,16 @@ function endGame(result){
         msg.textContent='Draw!';
     }else{
         const winner=result.winner;
-        msg.textContent=winner==='x'?'X wins!':'O wins!';
+        msg.textContent=winner.toUpperCase()+' Wins the round!';
         scores[winner]++;saveScore();updateScore();
         drawWinLine(result.combo);
+        
+        if(tourney){
+            if(scores.x===2 || scores.o===2){
+                msg.textContent=winner.toUpperCase()+' WINS THE TOURNAMENT!';
+                scores={x:0,o:0};saveScore();
+            }
+        }
     }
     setTimeout(()=>{player='x';init()},2000);
 }
@@ -176,8 +185,23 @@ function drawWinLine(combo){
     combo.forEach(i=>cells[i].style.boxShadow='0 0 15px #fff');
 }
 
-document.getElementById('modeBtn').onclick=()=>{mode=mode==='single'?'multi':'single';document.getElementById('modeBtn').textContent=`Mode: ${mode==='single'?'Single':'Multi'}`;init()};
-document.getElementById('levelBtn').onclick=()=>{const lv=['easy','medium','hard'];aiLevel=lv[(lv.indexOf(aiLevel)+1)%lv.length];document.getElementById('levelBtn').textContent=`AI: ${aiLevel[0].toUpperCase()+aiLevel.slice(1)}`;init()};
+document.getElementById('modeBtn').onclick=(e)=>{
+    mode=mode==='single'?'multi':'single';
+    e.target.textContent=`Mode: ${mode==='single'?'Single':'Multi'}`;
+    player='x';init();
+};
+document.getElementById('levelBtn').onclick=(e)=>{
+    const lv=['easy','medium','hard'];
+    aiLevel=lv[(lv.indexOf(aiLevel)+1)%lv.length];
+    e.target.textContent=`AI: ${aiLevel[0].toUpperCase()+aiLevel.slice(1)}`;
+    init();
+};
+document.getElementById('tourneyBtn').onclick=(e)=>{
+    tourney=!tourney;
+    e.target.textContent=`Tournament: ${tourney?'On':'Off'}`;
+    scores={x:0,o:0};saveScore();updateScore();
+    init();
+};
 document.getElementById('resetBtn').onclick=()=>{scores={x:0,o:0};saveScore();updateScore();msg.textContent='Scores reset!'};
 document.getElementById('purpleMode').onclick=()=>setTheme('purple');
 document.getElementById('darkMode').onclick=()=>setTheme('dark');
