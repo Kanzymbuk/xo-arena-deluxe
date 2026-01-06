@@ -24,7 +24,6 @@ border-radius:2px;box-shadow:0 0 12px rgba(255,255,255,.8);transform-origin:left
 .theme-switcher{position:fixed;top:10px;right:10px;display:flex;gap:.5rem;z-index:10}
 .theme-btn{width:25px;height:25px;border-radius:50%;border:none;cursor:pointer;box-shadow:0 0 10px rgba(0,0,0,.4);transition:transform .3s}
 .theme-btn:hover{transform:scale(1.2)}
-/* Themes */
 body.purple{background:linear-gradient(270deg,#210034,#4a0089,#6a00b8);background-size:600% 600%;animation:bgShift 20s ease infinite;color:#fff}
 body.purple .glass{background-color:rgba(255,255,255,.1);}
 body.dark{background:linear-gradient(180deg,#000,#222);color:#eee}
@@ -54,41 +53,137 @@ body.light .glass{background-color:rgba(255,255,255,.3);}
 </div>
 <script>
 const boardEl=document.getElementById('board'),msg=document.getElementById('message'),scoreEl=document.getElementById('score'),winLine=document.getElementById('win-line');
-let cells=[],board,player='x',mode='single',aiLevel='easy',tourney=false,round=0,scores=JSON.parse(localStorage.getItem('xoScores')||'{"x":0,"o":0}');
-function init(){board=['','','','','','','','',''];boardEl.innerHTML='<div id="win-line"></div>';boardEl.appendChild(winLine);
-for(let i=0;i<9;i++){const c=document.createElement('div');c.className='cell';c.addEventListener('click',()=>move(i));boardEl.appendChild(c)};
-cells=[...document.querySelectorAll('.cell')];updateScore();msg.textContent='Tap to play!';}
+let cells=[],board,player='x',mode='single',aiLevel='easy',scores=JSON.parse(localStorage.getItem('xoScores')||'{"x":0,"o":0}');
+const wins=[[0,1,2],[3,4,5],[6,7,8],[0,3,6],[1,4,7],[2,5,8],[0,4,8],[2,4,6]];
+
+function init(){
+    board=['','','','','','','','',''];
+    boardEl.innerHTML='<div id="win-line"></div>';
+    for(let i=0;i<9;i++){
+        const c=document.createElement('div');
+        c.className='cell';
+        c.onclick=()=>move(i);
+        boardEl.appendChild(c);
+    }
+    cells=[...document.querySelectorAll('.cell')];
+    updateScore();
+    msg.textContent='Tap to play!';
+}
+
 function updateScore(){scoreEl.textContent=`X:${scores.x} O:${scores.o}`}
 function saveScore(){localStorage.setItem('xoScores',JSON.stringify(scores))}
-function move(i){if(board[i]||checkWinner(board))return;board[i]=player;cells[i].classList.add(player);cells[i].textContent=player.toUpperCase();
-const win=checkWinner(board);if(win)return endGame(win);if(mode==='single'&&player==='x'){player='o';setTimeout(aiMove,400);return;}
-function aiMove(){let moveIndex;if(aiLevel==='easy'){const empties=board.map((v,i)=>v?null:i).filter(v=>v!=null);moveIndex=empties[Math.floor(Math.random()*empties.length)]}
-else if(aiLevel==='medium'){moveIndex=findWin('o')??findWin('x')??randomEmpty()}else moveIndex=minimax(board,'o')?.index ?? randomEmpty();
-board[moveIndex]='o';cells[moveIndex].classList.add('o');cells[moveIndex].textContent='O';const win=checkWinner(board);if(win)return endGame(win);player='x'}
-function findWin(sym){for(let i of wins){const[a,b,c]=i;if(board[a]===sym&&board[b]===sym&&!board[c])return c;if(board[a]===sym&&board[c]===sym&&!board[b])return b;if(board[b]===sym&&board[c]===sym&&!board[a])return a}return null}
-function randomEmpty(){return board.map((v,i)=>v?null:i).filter(v=>v!=null)[0]}
-function checkWinner(b){for(let i of wins){const[a,b1,c]=i;if(b[a]&&b[a]===b[b1]&&b[a]===b[c])return i}return b.includes('')?null:'draw'}
-function endGame(result){if(result==='draw'){msg.textContent='Draw!';return resetAfterDelay()}
-drawWinLine(result);const winner=board[result[0]];msg.textContent=winner==='x'?'X wins!':'O wins!';scores[winner]++;saveScore();updateScore();setTimeout(resetAfterDelay,1800)}
-function drawWinLine(combo){const start=cells[combo[0]].getBoundingClientRect(),end=cells[combo[2]].getBoundingClientRect(),boardRect=boardEl.getBoundingClientRect();
-const x1=start.left+start.width/2-boardRect.left,y1=start.top+start.height/2-boardRect.top,x2=end.left+end.width/2-boardRect.left,y2=end.top+end.height/2-boardRect.top;
-const length=Math.sqrt((x2-x1)**2+(y2-y1)**2);const angle=Math.atan2(y2-y1,x2-x1)*(180/Math.PI);
-winLine.style.width=length+'px';winLine.style.transform=`translate(${x1}px,${y1}px) rotate(${angle}deg)`;winLine.style.opacity=1;
-setTimeout(()=>winLine.style.opacity=0,1500);combo.forEach(i=>cells[i].style.boxShadow='0 0 15px #fff');}
-function resetAfterDelay(){setTimeout(()=>{player='x';init()},1500)}
-const wins=[[0,1,2],[3,4,5],[6,7,8],[0,3,6],[1,4,7],[2,5,8],[0,4,8],[2,4,6]];
-function minimax(newBoard,playerSym){const avail=newBoard.map((v,i)=>v?null:i).filter(v=>v!=null);if(!checkWinner(newBoard)&&avail.length===0)return{score:0};
-if(checkWinner(newBoard)&&board[checkWinner(newBoard)[0]]==='x')return{score:-10};if(checkWinner(newBoard)&&board[checkWinner(newBoard)[0]]==='o')return{score:10};
-const moves=[];for(let i of avail){const move={index:i};newBoard[i]=playerSym;const res=playerSym==='o'?minimax(newBoard,'x'):minimax(newBoard,'o');
-move.score=res.score;newBoard[i]='';moves.push(move)}let best;if(playerSym==='o'){let max=-1e9;for(let m of moves)if(m.score>max){max=m.score;best=m}}
-else{let min=1e9;for(let m of moves)if(m.score<min){min=m.score;best=m}}return best}
+
+function move(i){
+    if(board[i]||checkWinner(board))return;
+    executeMove(i,'x');
+    const win=checkWinner(board);
+    if(win)return endGame(win);
+    if(mode==='single'){
+        player='o';
+        setTimeout(aiMove,400);
+    }else{
+        player=player==='x'?'o':'x';
+    }
+}
+
+function executeMove(i,p){
+    board[i]=p;
+    cells[i].classList.add(p);
+    cells[i].textContent=p.toUpperCase();
+}
+
+function aiMove(){
+    let moveIndex;
+    if(aiLevel==='easy'){
+        const empties=board.map((v,i)=>v===''?i:null).filter(v=>v!==null);
+        moveIndex=empties[Math.floor(Math.random()*empties.length)];
+    }else if(aiLevel==='medium'){
+        moveIndex=findWin('o')??findWin('x')??board.findIndex(v=>v==='');
+    }else{
+        moveIndex=minimax(board,'o').index;
+    }
+    if(moveIndex!==undefined){
+        executeMove(moveIndex,'o');
+        const win=checkWinner(board);
+        if(win)return endGame(win);
+        player='x';
+    }
+}
+
+function findWin(sym){
+    for(let i of wins){
+        const[a,b,c]=i;
+        if(board[a]===sym&&board[b]===sym&&!board[c])return c;
+        if(board[a]===sym&&board[c]===sym&&!board[b])return b;
+        if(board[b]===sym&&board[c]===sym&&!board[a])return a;
+    }
+    return null;
+}
+
+function checkWinner(b){
+    for(let i of wins){
+        const[a,b1,c]=i;
+        if(b[a]&&b[a]===b[b1]&&b[a]===b[c])return {combo:i,winner:b[a]};
+    }
+    return b.includes('')?null:'draw';
+}
+
+function minimax(newBoard,currPlayer){
+    const avail=newBoard.map((v,i)=>v===''?i:null).filter(v=>v!==null);
+    const result=checkWinner(newBoard);
+    if(result==='draw')return{score:0};
+    if(result&&result.winner==='x')return{score:-10};
+    if(result&&result.winner==='o')return{score:10};
+
+    const moves=[];
+    for(let i of avail){
+        const move={index:i};
+        newBoard[i]=currPlayer;
+        move.score=currPlayer==='o'?minimax(newBoard,'x').score:minimax(newBoard,'o').score;
+        newBoard[i]='';
+        moves.push(move);
+    }
+
+    let bestMove;
+    if(currPlayer==='o'){
+        let bestScore=-Infinity;
+        for(let m of moves)if(m.score>bestScore){bestScore=m.score;bestMove=m}
+    }else{
+        let bestScore=Infinity;
+        for(let m of moves)if(m.score<bestScore){bestScore=m.score;bestMove=m}
+    }
+    return bestMove;
+}
+
+function endGame(result){
+    if(result==='draw'){
+        msg.textContent='Draw!';
+    }else{
+        const winner=result.winner;
+        msg.textContent=winner==='x'?'X wins!':'O wins!';
+        scores[winner]++;saveScore();updateScore();
+        drawWinLine(result.combo);
+    }
+    setTimeout(()=>{player='x';init()},2000);
+}
+
+function drawWinLine(combo){
+    const wl=document.getElementById('win-line');
+    const start=cells[combo[0]].getBoundingClientRect(),end=cells[combo[2]].getBoundingClientRect(),boardRect=boardEl.getBoundingClientRect();
+    const x1=start.left+start.width/2-boardRect.left,y1=start.top+start.height/2-boardRect.top,x2=end.left+end.width/2-boardRect.left,y2=end.top+end.height/2-boardRect.top;
+    const length=Math.sqrt((x2-x1)**2+(y2-y1)**2);const angle=Math.atan2(y2-y1,x2-x1)*(180/Math.PI);
+    wl.style.width=length+'px';wl.style.transform=`translate(${x1}px,${y1}px) rotate(${angle}deg)`;wl.style.opacity=1;
+    combo.forEach(i=>cells[i].style.boxShadow='0 0 15px #fff');
+}
+
 document.getElementById('modeBtn').onclick=()=>{mode=mode==='single'?'multi':'single';document.getElementById('modeBtn').textContent=`Mode: ${mode==='single'?'Single':'Multi'}`;init()};
-document.getElementById('levelBtn').onclick=()=>{const lv=['easy','medium','hard'];aiLevel=lv[(lv.indexOf(aiLevel)+1)%lv.length];
-document.getElementById('levelBtn').textContent=`AI: ${aiLevel[0].toUpperCase()+aiLevel.slice(1)}`;init()};
-document.getElementById('tourneyBtn').onclick=()=>{tourney=!tourney;document.getElementById('tourneyBtn').textContent=`Tournament: ${tourney?'On':'Off'}`;init()};
+document.getElementById('levelBtn').onclick=()=>{const lv=['easy','medium','hard'];aiLevel=lv[(lv.indexOf(aiLevel)+1)%lv.length];document.getElementById('levelBtn').textContent=`AI: ${aiLevel[0].toUpperCase()+aiLevel.slice(1)}`;init()};
 document.getElementById('resetBtn').onclick=()=>{scores={x:0,o:0};saveScore();updateScore();msg.textContent='Scores reset!'};
-document.getElementById('purpleMode').onclick=()=>{setTheme('purple')};document.getElementById('darkMode').onclick=()=>{setTheme('dark')};document.getElementById('lightMode').onclick=()=>{setTheme('light')};
-function setTheme(t){document.body.className=t;localStorage.setItem('xoTheme',t);}
-(function(){const saved=localStorage.getItem('xoTheme')||'purple';setTheme(saved);})();init();
+document.getElementById('purpleMode').onclick=()=>setTheme('purple');
+document.getElementById('darkMode').onclick=()=>setTheme('dark');
+document.getElementById('lightMode').onclick=()=>setTheme('light');
+function setTheme(t){document.body.className=t;localStorage.setItem('xoTheme',t)}
+setTheme(localStorage.getItem('xoTheme')||'purple');
+init();
 </script>
 </body></html>
