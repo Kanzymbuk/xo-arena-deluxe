@@ -63,7 +63,7 @@ function saveScore(){localStorage.setItem('xoScores',JSON.stringify(scores))}
 function move(i){if(board[i]||checkWinner(board))return;board[i]=player;cells[i].classList.add(player);cells[i].textContent=player.toUpperCase();
 const win=checkWinner(board);if(win)return endGame(win);if(mode==='single'&&player==='x')return setTimeout(aiMove,400);player=player==='x'?'o':'x'}
 function aiMove(){let moveIndex;if(aiLevel==='easy'){const empties=board.map((v,i)=>v?null:i).filter(v=>v!=null);moveIndex=empties[Math.floor(Math.random()*empties.length)]}
-else if(aiLevel==='medium'){moveIndex=findWin('o')??findWin('x')??randomEmpty()}else moveIndex=minimax(board,'o').index;
+else if(aiLevel==='medium'){moveIndex=findWin('o')??findWin('x')??randomEmpty()}else moveIndex=minimax(board,'o')?.index ?? randomEmpty();
 board[moveIndex]='o';cells[moveIndex].classList.add('o');cells[moveIndex].textContent='O';const win=checkWinner(board);if(win)return endGame(win);player='x'}
 function findWin(sym){for(let i of wins){const[a,b,c]=i;if(board[a]===sym&&board[b]===sym&&!board[c])return c;if(board[a]===sym&&board[c]===sym&&!board[b])return b;if(board[b]===sym&&board[c]===sym&&!board[a])return a}return null}
 function randomEmpty(){return board.map((v,i)=>v?null:i).filter(v=>v!=null)[0]}
