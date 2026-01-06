@@ -61,7 +61,7 @@ cells=[...document.querySelectorAll('.cell')];updateScore();msg.textContent='Tap
 function updateScore(){scoreEl.textContent=`X:${scores.x} O:${scores.o}`}
 function saveScore(){localStorage.setItem('xoScores',JSON.stringify(scores))}
 function move(i){if(board[i]||checkWinner(board))return;board[i]=player;cells[i].classList.add(player);cells[i].textContent=player.toUpperCase();
-const win=checkWinner(board);if(win)return endGame(win);if(mode==='single'&&player==='x')return setTimeout(aiMove,400);player=player==='x'?'o':'x'}
+const win=checkWinner(board);if(win)return endGame(win);if(mode==='single'&&player==='x'){player='o';setTimeout(aiMove,400);return;}
 function aiMove(){let moveIndex;if(aiLevel==='easy'){const empties=board.map((v,i)=>v?null:i).filter(v=>v!=null);moveIndex=empties[Math.floor(Math.random()*empties.length)]}
 else if(aiLevel==='medium'){moveIndex=findWin('o')??findWin('x')??randomEmpty()}else moveIndex=minimax(board,'o')?.index ?? randomEmpty();
 board[moveIndex]='o';cells[moveIndex].classList.add('o');cells[moveIndex].textContent='O';const win=checkWinner(board);if(win)return endGame(win);player='x'}
